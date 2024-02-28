@@ -1,0 +1,17 @@
+[package]
+name = "processing-rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "processing"
+path = "lib/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/bin.rs"
+
+[dependencies]
+anyhow = "1.0.79"
+glium = "0.34.0"
+winit = "0.29.10"
