@@ -1,11 +1,10 @@
-pub trait Renderer {}
+use crate::{core::vertex::Vertex, settings::StrokeJoin, Color, StrokeCap};
 
-#[derive(Debug)]
-pub struct P2D;
-
-impl Renderer for P2D {}
-
-#[derive(Debug)]
-pub struct P3D;
-
-impl Renderer for P3D {}
+pub trait Renderer {
+    fn shapes(&self) -> &Vec<Vertex>;
+    fn stroke(&mut self, color: Option<Color>);
+    fn stroke_weight(&mut self, weight: f32);
+    fn stroke_cap(&mut self, cap: StrokeCap);
+    fn stroke_join(&mut self, join: StrokeJoin);
+    fn fill(&mut self, color: Option<Color>);
+}

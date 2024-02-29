@@ -9,12 +9,11 @@ use crate::{
     settings::StrokeJoin,
     shapes,
     tess::{self, tessellator::Tessellator},
-    Color, Processing, StrokeCap, P2D, P3D,
+    Color, Processing, StrokeCap,
 };
 
 #[derive(Debug)]
-pub struct Graphics<R: Renderer> {
-    _renderer: PhantomData<R>,
+pub struct Graphics {
     fill: Option<Color>,
 
     stroke: Option<Color>,
@@ -25,10 +24,9 @@ pub struct Graphics<R: Renderer> {
     shapes: Vec<Vertex>,
 }
 
-impl<R: Renderer> Graphics<R> {
-    pub fn new() -> Self {
+impl Default for Graphics {
+    fn default() -> Self {
         Graphics {
-            _renderer: PhantomData,
             fill: Some(Color::rgb(255, 255, 255)),
             stroke: Some(Color::rgb(0, 0, 0)),
             stroke_weight: 1.0,
@@ -38,104 +36,128 @@ impl<R: Renderer> Graphics<R> {
             shapes: Vec::new(),
         }
     }
+}
 
-    pub fn shapes(&self) -> &Vec<Vertex> {
-        &self.shapes
-    }
-
+impl Graphics {
     pub fn depth(&self) -> f32 {
         100.0
     }
 
-    pub fn stroke(&mut self, color: Option<Color>) {
+    pub fn clear(&mut self) {
+        self.shapes.clear();
+    }
+
+    pub fn extend(&mut self, vertices: Vec<Vertex>) {
+        self.shapes.extend(vertices);
+    }
+}
+
+impl Renderer for Graphics {
+    fn shapes(&self) -> &Vec<Vertex> {
+        &self.shapes
+    }
+
+    fn stroke(&mut self, color: Option<Color>) {
         self.stroke = color;
     }
 
-    pub fn stroke_weight(&mut self, weight: f32) {
+    fn stroke_weight(&mut self, weight: f32) {
         self.stroke_weight = weight;
     }
 
-    pub fn stroke_cap(&mut self, cap: StrokeCap) {
+    fn stroke_cap(&mut self, cap: StrokeCap) {
         self.stroke_cap = cap;
     }
 
-    pub fn stroke_join(&mut self, join: StrokeJoin) {
+    fn stroke_join(&mut self, join: StrokeJoin) {
         self.stroke_join = join;
     }
 
-    pub fn fill(&mut self, color: Option<Color>) {
+    fn fill(&mut self, color: Option<Color>) {
         self.fill = color;
     }
 }
 
-impl Graphics<P2D> {
+pub struct GraphicsP2D {
+    graphics: Graphics,
+}
+
+impl Default for GraphicsP2D {
+    fn default() -> Self {
+        GraphicsP2D {
+            graphics: Graphics::default(),
+        }
+    }
+}
+
+impl GraphicsP2D {
     pub fn background(&mut self, color: Color, width: u32, height: u32) {
-        self.shapes.clear();
+        self.graphics.clear();
 
         let rect = shapes::rect(0.0, 0.0, width as f32, height as f32)
             .tessellate(tess::fns::gl_triangle::quad())
             .color(color);
 
-        self.shapes.extend(rect);
+        self.graphics.extend(rect);
     }
 
     pub fn point(&mut self, vertex: (f32, f32)) {
-        if let Some(stroke) = self.stroke {
+        if let Some(stroke) = self.graphics.stroke {
             let point = shapes::point(vertex)
                 .tessellate(tess::fns::gl_triangle::point(
-                    self.stroke_weight,
-                    self.stroke_cap,
+                    self.graphics.stroke_weight,
+                    self.graphics.stroke_cap,
                 ))
                 .color(stroke);
-            self.shapes.extend(point);
+            self.graphics.extend(point);
         }
     }
 
     pub fn line(&mut self, a: (f32, f32), b: (f32, f32)) {
-        if let Some(stroke) = self.stroke {
+        if let Some(stroke) = self.graphics.stroke {
             let line = shapes::line(a, b)
                 .tessellate(tess::fns::gl_triangle::line(
-                    self.stroke_weight,
-                    self.stroke_cap,
+                    self.graphics.stroke_weight,
+                    self.graphics.stroke_cap,
                 ))
                 .color(stroke);
-            self.shapes.extend(line);
+            self.graphics.extend(line);
         }
     }
 
     pub fn triangle(&mut self, a: (f32, f32), b: (f32, f32), c: (f32, f32)) {
-        if let Some(fill) = self.fill {
+        if let Some(fill) = self.graphics.fill {
             let triangle = shapes::triangle(a, b, c)
                 .tessellate(tess::fns::gl_triangle::triangle())
                 .color(fill);
-            self.shapes.extend(triangle);
+            self.graphics.extend(triangle);
         }
     }
 
     pub fn rect(&mut self, x: f32, y: f32, width: f32, height: f32) {
-        if let Some(fill) = self.fill {
+        if let Some(fill) = self.graphics.fill {
             let rect = shapes::rect(x, y, width, height)
                 .tessellate(tess::fns::gl_triangle::quad())
                 .color(fill);
-            self.shapes.extend(rect);
+            self.graphics.extend(rect);
         }
     }
 
     pub fn ellipse(&mut self, x: f32, y: f32, width: f32, height: f32) {
-        if let Some(fill) = self.fill {
+        if let Some(fill) = self.graphics.fill {
             let ellipse = shapes::ellipse((x, y), (width, height))
                 .tessellate(tess::fns::gl_triangle::ellipse(20))
                 .color(fill);
-            self.shapes.extend(ellipse);
+            self.graphics.extend(ellipse);
         }
     }
 
     pub fn ellipse_arc(&mut self, x: f32, y: f32, width: f32, height: f32, start: f32, stop: f32) {
-        if let Some(fill) = self.fill {
+        if let Some(fill) = self.graphics.fill {
             let arc = shapes::ellipse_arc((x, y), (width, height), start, stop)
                 .tessellate(tess::fns::gl_triangle::ellipse_arc(20))
                 .color(fill);
-            self.shapes.extend(arc);
+            self.graphics.extend(arc);
         }
     }
 
@@ -152,7 +174,45 @@ impl Graphics<P2D> {
     }
 }
 
-impl Graphics<P3D> {
+impl Renderer for GraphicsP2D {
+    fn shapes(&self) -> &Vec<Vertex> {
+        &self.graphics.shapes
+    }
+
+    fn stroke(&mut self, color: Option<Color>) {
+        self.graphics.stroke(color);
+    }
+
+    fn stroke_weight(&mut self, weight: f32) {
+        self.graphics.stroke_weight(weight);
+    }
+
+    fn stroke_cap(&mut self, cap: StrokeCap) {
+        self.graphics.stroke_cap(cap);
+    }
+
+    fn stroke_join(&mut self, join: StrokeJoin) {
+        self.graphics.stroke_join(join);
+    }
+
+    fn fill(&mut self, color: Option<Color>) {
+        self.graphics.fill(color);
+    }
+}
+
+pub struct GraphicsP3D {
+    graphics: Graphics,
+}
+
+impl Default for GraphicsP3D {
+    fn default() -> Self {
+        GraphicsP3D {
+            graphics: Graphics::default(),
+        }
+    }
+}
+
+impl GraphicsP3D {
     pub fn parallelepiped(&mut self, width: f32, height: f32, depth: f32, angle: f32) {
         unimplemented!("3D shapes are not yet implemented");
     }
@@ -167,5 +227,31 @@ impl Graphics<P3D> {
 
     pub fn sphere(&mut self, radius: f32) {
         unimplemented!("3D shapes are not yet implemented");
+    }
+}
+
+impl Renderer for GraphicsP3D {
+    fn shapes(&self) -> &Vec<Vertex> {
+        &self.graphics.shapes
+    }
+
+    fn stroke(&mut self, color: Option<Color>) {
+        self.graphics.stroke(color);
+    }
+
+    fn stroke_weight(&mut self, weight: f32) {
+        self.graphics.stroke_weight(weight);
+    }
+
+    fn stroke_cap(&mut self, cap: StrokeCap) {
+        self.graphics.stroke_cap(cap);
+    }
+
+    fn stroke_join(&mut self, join: StrokeJoin) {
+        self.graphics.stroke_join(join);
+    }
+
+    fn fill(&mut self, color: Option<Color>) {
+        self.graphics.fill(color);
     }
 }

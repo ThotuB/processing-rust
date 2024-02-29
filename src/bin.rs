@@ -1,4 +1,4 @@
-use p5::{Color, P2D, P3D};
+use p5::Color;
 
 extern crate glium;
 extern crate processing as p5;

@@ -9,16 +9,16 @@ use winit::{
 };
 
 use crate::{
-    graphics::Graphics,
+    graphics::{Graphics, GraphicsP2D, GraphicsP3D},
     renderer::Renderer,
     settings::{StrokeCap, StrokeJoin, WindowSettings},
-    Color, P2D, P3D,
+    Color,
 };
 
 #[derive(Debug)]
-pub struct Processing<T, R: Renderer> {
+pub struct Processing<T, R: Renderer + Default> {
     pub state: T,
-    g: Graphics<R>,
+    g: R,
 
     window_settings: WindowSettings,
     is_loop: bool,
@@ -27,7 +27,7 @@ pub struct Processing<T, R: Renderer> {
     pub draw: fn(&mut Processing<T, R>),
 }
 
-impl<T, R: Renderer> Processing<T, R> {
+impl<T, R: Renderer + Default> Processing<T, R> {
     pub fn new(
         setup: fn(&mut Processing<T, R>),
         draw: fn(&mut Processing<T, R>),
@@ -35,16 +35,14 @@ impl<T, R: Renderer> Processing<T, R> {
     ) -> Processing<T, R> {
         Processing {
             state,
-            g: Graphics::new(),
+            g: R::default(),
             window_settings: WindowSettings::default(),
             is_loop: true,
             setup,
             draw,
         }
     }
-}
 
-impl<T, R: Renderer> Processing<T, R> {
     // window configuration
     pub fn size(&mut self, width: u32, height: u32) {
         self.window_settings.width = width;
@@ -193,7 +191,7 @@ impl<T, R: Renderer> Processing<T, R> {
     }
 }
 
-impl<T> Processing<T, P2D> {
+impl<T> Processing<T, GraphicsP2D> {
     // shapes
     pub fn background(&mut self, color: Color) {
         self.g.background(color, self.width(), self.height());
@@ -232,7 +230,7 @@ impl<T> Processing<T, P2D> {
     }
 }
 
-impl<T> Processing<T, P3D> {
+impl<T> Processing<T, GraphicsP3D> {
     pub fn parallelepiped(&mut self, width: f32, height: f32, depth: f32, angle: f32) {
         self.g.parallelepiped(width, height, depth, angle);
     }
@@ -250,7 +248,7 @@ impl<T> Processing<T, P3D> {
     }
 }
 
-impl<T, R: Renderer> Processing<T, R> {
+impl<T, R: Renderer + Default> Processing<T, R> {
     fn event_handler(&mut self, event: Event<()>, window_target: &EventLoopWindowTarget<()>) {
         match event {
             Event::WindowEvent { event, .. } => match event {

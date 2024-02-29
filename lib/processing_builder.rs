@@ -1,13 +1,13 @@
 use crate::{processing::Processing, renderer::Renderer};
 
 #[derive(Debug)]
-pub struct ProcessingBuilder<T, R: Renderer> {
+pub struct ProcessingBuilder<T, R: Renderer + Default> {
     state: T,
     setup: fn(&mut Processing<T, R>),
     draw: fn(&mut Processing<T, R>),
 }
 
-impl<T, R: Renderer> ProcessingBuilder<T, R> {
+impl<T, R: Renderer + Default> ProcessingBuilder<T, R> {
     pub(crate) fn new(state: T) -> ProcessingBuilder<T, R> {
         ProcessingBuilder {
             state,
