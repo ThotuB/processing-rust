@@ -5,7 +5,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     core::vertex::Vertex,
-    renderer::Renderer,
+    renderer::{Renderer, Stroke},
     settings::StrokeJoin,
     shapes,
     tess::{self, tessellator::Tessellator},
@@ -56,7 +56,9 @@ impl Renderer for Graphics {
     fn shapes(&self) -> &Vec<Vertex> {
         &self.shapes
     }
+}
 
+impl Stroke for Graphics {
     fn stroke(&mut self, color: Option<Color>) {
         self.stroke = color;
     }
@@ -78,16 +80,9 @@ impl Renderer for Graphics {
     }
 }
 
+#[derive(Default)]
 pub struct GraphicsP2D {
     graphics: Graphics,
-}
-
-impl Default for GraphicsP2D {
-    fn default() -> Self {
-        GraphicsP2D {
-            graphics: Graphics::default(),
-        }
-    }
 }
 
 impl GraphicsP2D {
@@ -178,7 +173,9 @@ impl Renderer for GraphicsP2D {
     fn shapes(&self) -> &Vec<Vertex> {
         &self.graphics.shapes
     }
+}
 
+impl Stroke for GraphicsP2D {
     fn stroke(&mut self, color: Option<Color>) {
         self.graphics.stroke(color);
     }
@@ -200,16 +197,9 @@ impl Renderer for GraphicsP2D {
     }
 }
 
+#[derive(Default)]
 pub struct GraphicsP3D {
     graphics: Graphics,
-}
-
-impl Default for GraphicsP3D {
-    fn default() -> Self {
-        GraphicsP3D {
-            graphics: Graphics::default(),
-        }
-    }
 }
 
 impl GraphicsP3D {
@@ -234,7 +224,9 @@ impl Renderer for GraphicsP3D {
     fn shapes(&self) -> &Vec<Vertex> {
         &self.graphics.shapes
     }
+}
 
+impl Stroke for GraphicsP3D {
     fn stroke(&mut self, color: Option<Color>) {
         self.graphics.stroke(color);
     }

@@ -10,13 +10,13 @@ use winit::{
 
 use crate::{
     graphics::{Graphics, GraphicsP2D, GraphicsP3D},
-    renderer::Renderer,
+    renderer::{Renderer, Stroke},
     settings::{StrokeCap, StrokeJoin, WindowSettings},
     Color,
 };
 
 #[derive(Debug)]
-pub struct Processing<T, R: Renderer + Default> {
+pub struct Processing<T, R: Renderer> {
     pub state: T,
     g: R,
 
@@ -42,7 +42,9 @@ impl<T, R: Renderer + Default> Processing<T, R> {
             draw,
         }
     }
+}
 
+impl<T, R: Renderer> Processing<T, R> {
     // window configuration
     pub fn size(&mut self, width: u32, height: u32) {
         self.window_settings.width = width;
@@ -60,7 +62,9 @@ impl<T, R: Renderer + Default> Processing<T, R> {
     pub fn height(&self) -> u32 {
         self.window_settings.height
     }
+}
 
+impl<T, R: Renderer + Stroke> Processing<T, R> {
     // color settings
     pub fn stroke(&mut self, color: Color) {
         self.g.stroke(Some(color));
@@ -248,7 +252,7 @@ impl<T> Processing<T, GraphicsP3D> {
     }
 }
 
-impl<T, R: Renderer + Default> Processing<T, R> {
+impl<T, R: Renderer> Processing<T, R> {
     fn event_handler(&mut self, event: Event<()>, window_target: &EventLoopWindowTarget<()>) {
         match event {
             Event::WindowEvent { event, .. } => match event {
