@@ -9,8 +9,9 @@ use winit::{
 };
 
 use crate::{
-    graphics::{Graphics, GraphicsP2D, GraphicsP3D},
-    renderer::{Renderer, Stroke},
+    geometry::GeometryKind,
+    graphics::{GraphicsP2D, GraphicsP3D},
+    renderer::{Renderer, Stroke, VertexShape},
     settings::{StrokeCap, StrokeJoin, WindowSettings},
     Color,
 };
@@ -18,13 +19,13 @@ use crate::{
 #[derive(Debug)]
 pub struct Processing<T, R: Renderer> {
     pub state: T,
-    g: R,
+    pub g: R,
 
     window_settings: WindowSettings,
     is_loop: bool,
 
-    pub setup: fn(&mut Processing<T, R>),
-    pub draw: fn(&mut Processing<T, R>),
+    setup: fn(&mut Processing<T, R>),
+    draw: fn(&mut Processing<T, R>),
 }
 
 impl<T, R: Renderer + Default> Processing<T, R> {
@@ -192,6 +193,20 @@ impl<T, R: Renderer + Stroke> Processing<T, R> {
         (self.draw)(self);
 
         self.draw_frame(display, program);
+    }
+}
+
+impl<T, R: Renderer + VertexShape> Processing<T, R> {
+    pub fn begin_shape(&mut self, kind: GeometryKind) {
+        self.g.begin_shape(kind);
+    }
+
+    pub fn vertex(&mut self, vertex: <R as VertexShape>::Item) {
+        self.g.vertex(vertex);
+    }
+
+    pub fn end_shape(&mut self) {
+        self.g.end_shape();
     }
 }
 

@@ -12,6 +12,7 @@ use crate::renderer::Renderer;
 mod color;
 mod consts;
 mod core;
+mod geometry;
 mod graphics;
 mod processing;
 mod processing_builder;

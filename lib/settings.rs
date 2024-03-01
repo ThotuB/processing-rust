@@ -31,10 +31,24 @@ pub enum StrokeJoin {
     Bevel,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct StrokeSettings {
-    pub color: Color,
-    pub weight: f32,
-    pub cap: StrokeCap,
-    pub join: StrokeJoin,
+    pub fill: Option<Color>,
+
+    pub stroke: Option<Color>,
+    pub stroke_weight: f32,
+    pub stroke_cap: StrokeCap,
+    pub stroke_join: StrokeJoin,
+}
+
+impl Default for StrokeSettings {
+    fn default() -> Self {
+        StrokeSettings {
+            fill: Some(Color::rgb(255, 255, 255)),
+            stroke: Some(Color::rgb(0, 0, 0)),
+            stroke_weight: 1.0,
+            stroke_cap: StrokeCap::Butt,
+            stroke_join: StrokeJoin::Miter,
+        }
+    }
 }
