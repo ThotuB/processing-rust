@@ -1,4 +1,10 @@
-use crate::{core::vertex::Vertex, Color};
+use glium::index;
+
+use crate::{
+    core::vertex::{vert3d, Vertex},
+    gl_shape::LazyGlShape,
+    Color,
+};
 
 pub enum GeometryKind {
     Points,
@@ -9,6 +15,21 @@ pub enum GeometryKind {
     Quads,
     QuadStrip,
     Polygon,
+}
+
+impl From<GeometryKind> for index::PrimitiveType {
+    fn from(val: GeometryKind) -> Self {
+        match val {
+            GeometryKind::Points => index::PrimitiveType::Points,
+            GeometryKind::Lines => index::PrimitiveType::LinesList,
+            GeometryKind::Triangles => index::PrimitiveType::TrianglesList,
+            GeometryKind::TriangleFan => index::PrimitiveType::TriangleFan,
+            GeometryKind::TriangleStrip => index::PrimitiveType::TriangleStrip,
+            GeometryKind::Quads => index::PrimitiveType::TrianglesList,
+            GeometryKind::QuadStrip => index::PrimitiveType::TriangleStrip,
+            GeometryKind::Polygon => index::PrimitiveType::TrianglesList,
+        }
+    }
 }
 
 pub struct GeometryVertex {
@@ -57,7 +78,16 @@ impl Geometry {
         self.vertices.push(vertex);
     }
 
-    pub fn tessellate(&self) -> Vec<Vertex> {
-        unimplemented!()
+    fn vertices(&mut self) -> Vec<GeometryVertex> {
+        self.vertices.drain(..).collect()
+    }
+
+    pub fn tessellate(mut self) -> LazyGlShape {
+        let shape = self
+            .vertices()
+            .into_iter()
+            .map(|v| vert3d(v.x, v.y, v.z, v.fill.unwrap_or(Color::TRANSPARENT)));
+
+        LazyGlShape::new(shape, self.kind.into())
     }
 }

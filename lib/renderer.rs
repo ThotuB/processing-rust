@@ -1,7 +1,9 @@
-use crate::{core::vertex::Vertex, geometry::GeometryKind, settings::StrokeJoin, Color, StrokeCap};
+use crate::{
+    geometry::GeometryKind, gl_shape::LazyGlShape, settings::StrokeJoin, Color, StrokeCap,
+};
 
 pub trait Renderer {
-    fn shapes(&self) -> &Vec<Vertex>;
+    fn shapes(&mut self) -> Vec<LazyGlShape>;
 }
 
 pub trait Stroke {

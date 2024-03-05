@@ -1,16 +1,15 @@
 use crate::{
     core::vertex::{vert2d, Vertex},
-    shapes::Point,
+    primitives::shapes_2d::Point,
     Color,
 };
 
 pub struct Tessellate<S, F, P>
 where
     F: FnOnce(S) -> P,
-    P: IntoIterator<Item = Point>,
 {
     input: S,
-    tessellator: F,
+    tess_fn: F,
 }
 
 impl<S, F, P> Tessellate<S, F, P>
@@ -18,15 +17,14 @@ where
     F: FnOnce(S) -> P,
     P: IntoIterator<Item = Point>,
 {
-    pub fn new(input: S, tessellator: F) -> Tessellate<S, F, P> {
-        Tessellate { input, tessellator }
+    pub fn new(input: S, tess_fn: F) -> Tessellate<S, F, P> {
+        Tessellate { input, tess_fn }
     }
 
-    pub fn color(self, color: Color) -> Vec<Vertex> {
-        let points = (self.tessellator)(self.input);
+    pub fn color(self, color: Color) -> impl Iterator<Item = Vertex> {
+        let points = (self.tess_fn)(self.input);
         points
             .into_iter()
-            .map(|point| vert2d(point.0, point.1, color))
-            .collect()
+            .map(move |point| vert2d(point.x, point.y, color))
     }
 }

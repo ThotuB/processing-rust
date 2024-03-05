@@ -19,10 +19,13 @@ use crate::{
 #[derive(Debug)]
 pub struct Processing<T, R: Renderer> {
     pub state: T,
-    pub g: R,
+    g: R,
 
     window_settings: WindowSettings,
     is_loop: bool,
+
+    frame_rate: u32,
+    frame_count: u32,
 
     setup: fn(&mut Processing<T, R>),
     draw: fn(&mut Processing<T, R>),
@@ -39,6 +42,8 @@ impl<T, R: Renderer + Default> Processing<T, R> {
             g: R::default(),
             window_settings: WindowSettings::default(),
             is_loop: true,
+            frame_rate: 1,
+            frame_count: 0,
             setup,
             draw,
         }
@@ -94,7 +99,9 @@ impl<T, R: Renderer + Stroke> Processing<T, R> {
     pub fn no_fill(&mut self) {
         self.g.fill(None);
     }
+}
 
+impl<T, R: Renderer> Processing<T, R> {
     // structure
     pub fn r#loop(&mut self) {
         self.is_loop = true;
@@ -124,17 +131,26 @@ impl<T, R: Renderer + Stroke> Processing<T, R> {
 
         self.draw_frame(&display, &program);
 
+        let frame_time = std::time::Duration::from_secs_f32(1.0 / self.frame_rate as f32);
+
         let _ = event_loop.run(move |event, window_target| {
+            let now = std::time::Instant::now();
+
             self.event_handler(event, window_target);
 
             self.handle_draw(&display, &program);
+
+            let elapsed = now.elapsed();
+            if elapsed < frame_time {
+                std::thread::sleep(frame_time - elapsed);
+            }
         });
 
         Ok(())
     }
 
     fn draw_shapes(
-        &self,
+        &mut self,
         target: &mut glium::Frame,
         display: &glium::Display<WindowSurface>,
         program: &glium::Program,
@@ -163,21 +179,28 @@ impl<T, R: Renderer + Stroke> Processing<T, R> {
             ..Default::default()
         };
 
-        let shapes = self.g.shapes();
-        let vertex_buffer = glium::VertexBuffer::new(display, shapes).unwrap();
+        let lazy_gl_shapes = self.g.shapes();
+        let gl_shapes = lazy_gl_shapes
+            .into_iter()
+            .map(|shape| shape.run())
+            .collect::<Vec<_>>();
 
-        target
-            .draw(
-                &vertex_buffer,
-                NoIndices(glium::index::PrimitiveType::TrianglesList),
-                program,
-                &uniforms,
-                &params,
-            )
-            .unwrap();
+        for gl_shape in &gl_shapes {
+            let vertex_buffer = glium::VertexBuffer::new(display, gl_shape.vertices()).unwrap();
+
+            target
+                .draw(
+                    &vertex_buffer,
+                    NoIndices(gl_shape.index_type()),
+                    program,
+                    &uniforms,
+                    &params,
+                )
+                .unwrap();
+        }
     }
 
-    fn draw_frame(&self, display: &glium::Display<WindowSurface>, program: &glium::Program) {
+    fn draw_frame(&mut self, display: &glium::Display<WindowSurface>, program: &glium::Program) {
         let mut target = display.draw();
 
         self.draw_shapes(&mut target, display, program);
@@ -344,5 +367,11 @@ impl<T, R: Renderer> Processing<T, R> {
             // Event::MemoryWarning => todo!(),
             _ => (),
         };
+    }
+}
+
+impl<T, R: Renderer> Drop for Processing<T, R> {
+    fn drop(&mut self) {
+        println!("Processing is dropped");
     }
 }

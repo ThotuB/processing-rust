@@ -1,94 +1,123 @@
-use std::marker::PhantomData;
-
-use glium::{glutin::surface::WindowSurface, index::NoIndices, Display, Surface};
-use winit::{dpi::PhysicalSize, window::Window};
+use glium::index::PrimitiveType;
 
 use crate::{
-    core::vertex::Vertex,
     geometry::{Geometry, GeometryKind, GeometryVertex},
+    gl_shape::LazyGlShape,
+    primitives::shapes_2d::{Ellipse, EllipseArc, Line, Point, Quad, Triangle},
     renderer::{Renderer, Stroke, VertexShape},
     settings::{StrokeJoin, StrokeSettings},
-    shapes,
-    tess::{self, tessellator::Tessellator},
-    Color, Processing, StrokeCap,
+    Color, StrokeCap,
 };
 
 #[derive(Default)]
 pub struct GraphicsP2D {
     stroke_settings: StrokeSettings,
 
-    vertex_shape: Option<Geometry>,
-    shapes: Vec<Vertex>,
+    geometry: Option<Geometry>,
+    shapes: Vec<LazyGlShape>,
 }
 
 impl GraphicsP2D {
     pub fn background(&mut self, color: Color, width: u32, height: u32) {
         self.shapes.clear();
 
-        let rect = shapes::rect(0.0, 0.0, width as f32, height as f32)
-            .tessellate(tess::fns::gl_triangle::quad())
+        let rect = Quad::rect(0.0, 0.0, width as f32, height as f32)
+            .tessellate_fill()
             .color(color);
 
-        self.shapes.extend(rect);
+        self.shapes
+            .push(LazyGlShape::new(rect, PrimitiveType::TrianglesList));
     }
 
     pub fn point(&mut self, vertex: (f32, f32)) {
         if let Some(stroke) = self.stroke_settings.stroke {
-            let point = shapes::point(vertex)
-                .tessellate(tess::fns::gl_triangle::point(
+            let point = Point::new(vertex)
+                .tessellate_fill(
                     self.stroke_settings.stroke_weight,
                     self.stroke_settings.stroke_cap,
-                ))
+                )
                 .color(stroke);
-            self.shapes.extend(point);
+            self.shapes
+                .push(LazyGlShape::new(point, PrimitiveType::TrianglesList));
         }
     }
 
     pub fn line(&mut self, a: (f32, f32), b: (f32, f32)) {
         if let Some(stroke) = self.stroke_settings.stroke {
-            let line = shapes::line(a, b)
-                .tessellate(tess::fns::gl_triangle::line(
+            let line = Line::new(a, b)
+                .tessellate_fill(
                     self.stroke_settings.stroke_weight,
                     self.stroke_settings.stroke_cap,
-                ))
+                )
                 .color(stroke);
-            self.shapes.extend(line);
+            self.shapes
+                .push(LazyGlShape::new(line, PrimitiveType::TrianglesList));
         }
     }
 
     pub fn triangle(&mut self, a: (f32, f32), b: (f32, f32), c: (f32, f32)) {
         if let Some(fill) = self.stroke_settings.fill {
-            let triangle = shapes::triangle(a, b, c)
-                .tessellate(tess::fns::gl_triangle::triangle())
-                .color(fill);
-            self.shapes.extend(triangle);
+            let triangle = Triangle::new(a, b, c).tessellate_fill().color(fill);
+            self.shapes
+                .push(LazyGlShape::new(triangle, PrimitiveType::TrianglesList));
+        }
+        if let Some(stroke) = self.stroke_settings.stroke {
+            let triangle = Triangle::new(a, b, c)
+                .tessellate_stroke(self.stroke_settings.stroke_weight)
+                .color(stroke);
+            self.shapes
+                .push(LazyGlShape::new(triangle, PrimitiveType::TrianglesList));
         }
     }
 
     pub fn rect(&mut self, x: f32, y: f32, width: f32, height: f32) {
         if let Some(fill) = self.stroke_settings.fill {
-            let rect = shapes::rect(x, y, width, height)
-                .tessellate(tess::fns::gl_triangle::quad())
+            let rect = Quad::rect(x, y, width, height)
+                .tessellate_fill()
                 .color(fill);
-            self.shapes.extend(rect);
+            self.shapes
+                .push(LazyGlShape::new(rect, PrimitiveType::TrianglesList));
+        }
+        if let Some(stroke) = self.stroke_settings.stroke {
+            let rect = Quad::rect(x, y, width, height)
+                .tessellate_stroke(self.stroke_settings.stroke_weight)
+                .color(stroke);
+            self.shapes
+                .push(LazyGlShape::new(rect, PrimitiveType::TrianglesList));
         }
     }
 
     pub fn ellipse(&mut self, x: f32, y: f32, width: f32, height: f32) {
         if let Some(fill) = self.stroke_settings.fill {
-            let ellipse = shapes::ellipse((x, y), (width, height))
-                .tessellate(tess::fns::gl_triangle::ellipse(20))
+            let ellipse = Ellipse::new((x, y), (width, height))
+                .tessellate_fill(20)
                 .color(fill);
-            self.shapes.extend(ellipse);
+            self.shapes
+                .push(LazyGlShape::new(ellipse, PrimitiveType::TrianglesList));
+        }
+        if let Some(stroke) = self.stroke_settings.stroke {
+            let ellipse = Ellipse::new((x, y), (width, height))
+                .tessellate_stroke(self.stroke_settings.stroke_weight, 20)
+                .color(stroke);
+            self.shapes
+                .push(LazyGlShape::new(ellipse, PrimitiveType::TrianglesList));
         }
     }
 
     pub fn ellipse_arc(&mut self, x: f32, y: f32, width: f32, height: f32, start: f32, stop: f32) {
         if let Some(fill) = self.stroke_settings.fill {
-            let arc = shapes::ellipse_arc((x, y), (width, height), start, stop)
-                .tessellate(tess::fns::gl_triangle::ellipse_arc(20))
+            let arc = EllipseArc::new((x, y), (width, height), start, stop)
+                .tessellate_fill(20)
                 .color(fill);
-            self.shapes.extend(arc);
+            self.shapes
+                .push(LazyGlShape::new(arc, PrimitiveType::TrianglesList));
+        }
+        if let Some(stroke) = self.stroke_settings.stroke {
+            let arc = EllipseArc::new((x, y), (width, height), start, stop)
+                .tessellate_stroke(self.stroke_settings.stroke_weight, 20)
+                .color(stroke);
+            self.shapes
+                .push(LazyGlShape::new(arc, PrimitiveType::TrianglesList));
         }
     }
 
@@ -109,14 +138,14 @@ impl VertexShape for GraphicsP2D {
     type Item = (f32, f32);
 
     fn begin_shape(&mut self, kind: GeometryKind) {
-        if self.vertex_shape.is_some() {
+        if self.geometry.is_some() {
             panic!("begin_shape() has already been called");
         }
-        self.vertex_shape = Some(Geometry::new(kind));
+        self.geometry = Some(Geometry::new(kind));
     }
 
     fn vertex(&mut self, vertex: Self::Item) {
-        let Some(ref mut shape) = self.vertex_shape else {
+        let Some(ref mut geometry) = self.geometry else {
             panic!("begin_shape() has not been called");
         };
         let StrokeSettings {
@@ -126,7 +155,7 @@ impl VertexShape for GraphicsP2D {
             ..
         } = self.stroke_settings;
 
-        shape.push_vertex(GeometryVertex::new(
+        geometry.push_vertex(GeometryVertex::new(
             vertex.0,
             vertex.1,
             0.0,
@@ -137,15 +166,17 @@ impl VertexShape for GraphicsP2D {
     }
 
     fn end_shape(&mut self) {
-        if self.vertex_shape.is_none() {
+        let Some(geometry) = self.geometry.take() else {
             panic!("begin_shape() has not been called");
-        }
+        };
+        let lazy_shape = geometry.tessellate();
+        self.shapes.push(lazy_shape);
     }
 }
 
 impl Renderer for GraphicsP2D {
-    fn shapes(&self) -> &Vec<Vertex> {
-        &self.shapes
+    fn shapes(&mut self) -> Vec<LazyGlShape> {
+        self.shapes.drain(..).collect()
     }
 }
 
@@ -175,7 +206,7 @@ impl Stroke for GraphicsP2D {
 pub struct GraphicsP3D {
     stroke_settings: StrokeSettings,
 
-    shapes: Vec<Vertex>,
+    shapes: Vec<LazyGlShape>,
 }
 
 impl GraphicsP3D {
@@ -197,8 +228,8 @@ impl GraphicsP3D {
 }
 
 impl Renderer for GraphicsP3D {
-    fn shapes(&self) -> &Vec<Vertex> {
-        &self.shapes
+    fn shapes(&mut self) -> Vec<LazyGlShape> {
+        self.shapes.drain(..).collect()
     }
 }
 

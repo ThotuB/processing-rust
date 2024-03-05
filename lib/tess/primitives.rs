@@ -1,4 +1,4 @@
-use crate::shapes::Point;
+use crate::primitives::shapes_2d::Point;
 
 pub struct GlTriangle {
     a: Point,

@@ -3,6 +3,7 @@ extern crate glium;
 
 pub use color::Color;
 pub use consts::*;
+pub use geometry::GeometryKind;
 pub use processing::Processing;
 use processing_builder::ProcessingBuilder;
 pub use settings::StrokeCap;
@@ -13,13 +14,15 @@ mod color;
 mod consts;
 mod core;
 mod geometry;
+mod gl_shape;
 mod graphics;
+mod primitives;
 mod processing;
 mod processing_builder;
 mod renderer;
 mod settings;
-mod shapes;
 mod tess;
+mod utils;
 
 pub fn new<R: Renderer + Default>() -> ProcessingBuilder<(), R> {
     ProcessingBuilder::new(())

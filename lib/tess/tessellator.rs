@@ -1,4 +1,4 @@
-use crate::{shapes::Point, tess::tessellate::Tessellate};
+use crate::{primitives::shapes_2d::Point, tess::tessellate::Tessellate};
 
 pub trait Tessellator {
     #[inline]
