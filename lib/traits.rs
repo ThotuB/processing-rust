@@ -14,7 +14,7 @@ pub trait Stroke {
     fn fill(&mut self, color: Option<Color>);
 }
 
-pub trait VertexShape {
+pub trait BeginShape {
     type Item;
 
     fn begin_shape(&mut self, kind: GeometryKind);

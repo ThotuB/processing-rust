@@ -3,18 +3,8 @@ use glium::index;
 use crate::core::vertex::Vertex;
 
 pub struct GlShape {
-    vertices: Vec<Vertex>,
-    index_type: index::PrimitiveType,
-}
-
-impl GlShape {
-    pub fn vertices(&self) -> &Vec<Vertex> {
-        &self.vertices
-    }
-
-    pub fn index_type(&self) -> index::PrimitiveType {
-        self.index_type
-    }
+    pub vertices: Vec<Vertex>,
+    pub index_type: index::PrimitiveType,
 }
 
 pub struct LazyGlShape {

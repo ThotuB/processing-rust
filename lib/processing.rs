@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use glium::{
     backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface, index::NoIndices,
     program, Display, Surface,
@@ -11,14 +13,14 @@ use winit::{
 use crate::{
     geometry::GeometryKind,
     graphics::{GraphicsP2D, GraphicsP3D},
-    renderer::{Renderer, Stroke, VertexShape},
     settings::{StrokeCap, StrokeJoin, WindowSettings},
+    traits::{BeginShape, Renderer, Stroke},
     Color,
 };
 
 #[derive(Debug)]
-pub struct Processing<T, R: Renderer> {
-    pub state: T,
+pub struct Processing<S, R: Renderer> {
+    pub state: S,
     g: R,
 
     window_settings: WindowSettings,
@@ -27,16 +29,16 @@ pub struct Processing<T, R: Renderer> {
     frame_rate: u32,
     frame_count: u32,
 
-    setup: fn(&mut Processing<T, R>),
-    draw: fn(&mut Processing<T, R>),
+    setup: fn(&mut Processing<S, R>),
+    draw: fn(&mut Processing<S, R>),
 }
 
-impl<T, R: Renderer + Default> Processing<T, R> {
+impl<S, R: Renderer + Default> Processing<S, R> {
     pub fn new(
-        setup: fn(&mut Processing<T, R>),
-        draw: fn(&mut Processing<T, R>),
-        state: T,
-    ) -> Processing<T, R> {
+        setup: fn(&mut Processing<S, R>),
+        draw: fn(&mut Processing<S, R>),
+        state: S,
+    ) -> Processing<S, R> {
         Processing {
             state,
             g: R::default(),
@@ -50,7 +52,7 @@ impl<T, R: Renderer + Default> Processing<T, R> {
     }
 }
 
-impl<T, R: Renderer> Processing<T, R> {
+impl<S, R: Renderer> Processing<S, R> {
     // window configuration
     pub fn size(&mut self, width: u32, height: u32) {
         self.window_settings.width = width;
@@ -70,7 +72,7 @@ impl<T, R: Renderer> Processing<T, R> {
     }
 }
 
-impl<T, R: Renderer + Stroke> Processing<T, R> {
+impl<S, R: Renderer + Stroke> Processing<S, R> {
     // color settings
     pub fn stroke(&mut self, color: Color) {
         self.g.stroke(Some(color));
@@ -101,7 +103,7 @@ impl<T, R: Renderer + Stroke> Processing<T, R> {
     }
 }
 
-impl<T, R: Renderer> Processing<T, R> {
+impl<S, R: Renderer> Processing<S, R> {
     // structure
     pub fn r#loop(&mut self) {
         self.is_loop = true;
@@ -186,12 +188,12 @@ impl<T, R: Renderer> Processing<T, R> {
             .collect::<Vec<_>>();
 
         for gl_shape in &gl_shapes {
-            let vertex_buffer = glium::VertexBuffer::new(display, gl_shape.vertices()).unwrap();
+            let vertex_buffer = glium::VertexBuffer::new(display, &gl_shape.vertices).unwrap();
 
             target
                 .draw(
                     &vertex_buffer,
-                    NoIndices(gl_shape.index_type()),
+                    NoIndices(gl_shape.index_type),
                     program,
                     &uniforms,
                     &params,
@@ -219,12 +221,12 @@ impl<T, R: Renderer> Processing<T, R> {
     }
 }
 
-impl<T, R: Renderer + VertexShape> Processing<T, R> {
+impl<S, R: Renderer + BeginShape> Processing<S, R> {
     pub fn begin_shape(&mut self, kind: GeometryKind) {
         self.g.begin_shape(kind);
     }
 
-    pub fn vertex(&mut self, vertex: <R as VertexShape>::Item) {
+    pub fn vertex(&mut self, vertex: <R as BeginShape>::Item) {
         self.g.vertex(vertex);
     }
 
@@ -233,7 +235,7 @@ impl<T, R: Renderer + VertexShape> Processing<T, R> {
     }
 }
 
-impl<T> Processing<T, GraphicsP2D> {
+impl<S> Processing<S, GraphicsP2D> {
     // shapes
     pub fn background(&mut self, color: Color) {
         self.g.background(color, self.width(), self.height());
@@ -272,7 +274,7 @@ impl<T> Processing<T, GraphicsP2D> {
     }
 }
 
-impl<T> Processing<T, GraphicsP3D> {
+impl<S> Processing<S, GraphicsP3D> {
     pub fn parallelepiped(&mut self, width: f32, height: f32, depth: f32, angle: f32) {
         self.g.parallelepiped(width, height, depth, angle);
     }
@@ -290,7 +292,21 @@ impl<T> Processing<T, GraphicsP3D> {
     }
 }
 
-impl<T, R: Renderer> Processing<T, R> {
+// impl<S, R: Renderer> Deref for Processing<S, R> {
+//     type Target = R;
+//
+//     fn deref(&self) -> &Self::Target {
+//         &self.g
+//     }
+// }
+//
+// impl<S, R: Renderer> DerefMut for Processing<S, R> {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.g
+//     }
+// }
+
+impl<S, R: Renderer> Processing<S, R> {
     fn event_handler(&mut self, event: Event<()>, window_target: &EventLoopWindowTarget<()>) {
         match event {
             Event::WindowEvent { event, .. } => match event {

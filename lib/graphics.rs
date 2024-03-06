@@ -4,8 +4,8 @@ use crate::{
     geometry::{Geometry, GeometryKind, GeometryVertex},
     gl_shape::LazyGlShape,
     primitives::shapes_2d::{Ellipse, EllipseArc, Line, Point, Quad, Triangle},
-    renderer::{Renderer, Stroke, VertexShape},
     settings::{StrokeJoin, StrokeSettings},
+    traits::{BeginShape, Renderer, Stroke},
     Color, StrokeCap,
 };
 
@@ -134,7 +134,7 @@ impl GraphicsP2D {
     }
 }
 
-impl VertexShape for GraphicsP2D {
+impl BeginShape for GraphicsP2D {
     type Item = (f32, f32);
 
     fn begin_shape(&mut self, kind: GeometryKind) {

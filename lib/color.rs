@@ -1,9 +1,11 @@
+use std::str::FromStr;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color {
+    pub alpha: u8,
     pub red: u8,
     pub green: u8,
     pub blue: u8,
-    pub alpha: u8,
 }
 
 impl Color {
@@ -43,24 +45,21 @@ impl Color {
         }
     }
 
-    pub fn as_f32(&self) -> (f32, f32, f32, f32) {
-        (
-            self.red as f32 / 255.0,
-            self.green as f32 / 255.0,
-            self.blue as f32 / 255.0,
-            self.alpha as f32 / 255.0,
-        )
+    pub fn hex_code(hex: &str) -> Result<Color, ColorParseError> {
+        hex.parse()
     }
 
-    pub fn as_u8(&self) -> (u8, u8, u8, u8) {
-        (self.red, self.green, self.blue, self.alpha)
+    pub fn hex(hex: u32) -> Color {
+        Color {
+            alpha: 255,
+            red: ((hex >> 16) & 0xff) as u8,
+            green: ((hex >> 8) & 0xff) as u8,
+            blue: (hex & 0xff) as u8,
+        }
     }
 
-    pub fn as_u32(&self) -> u32 {
-        (self.red as u32) << 24
-            | (self.green as u32) << 16
-            | (self.blue as u32) << 8
-            | self.alpha as u32
+    pub fn with_alpha(self, alpha: u8) -> Color {
+        Color { alpha, ..self }
     }
 
     // built-in colors
@@ -78,17 +77,69 @@ impl Color {
     pub const TRANSPARENT: Color = Color::const_rgba(0, 0, 0, 0);
 }
 
-impl From<Color> for (f32, f32, f32, f32) {
-    fn from(color: Color) -> (f32, f32, f32, f32) {
-        color.as_f32()
-    }
-}
-
 impl From<Color> for [f32; 4] {
-    fn from(color: Color) -> [f32; 4] {
-        let (r, g, b, a) = color.as_f32();
-        [r, g, b, a]
+    fn from(val: Color) -> Self {
+        [
+            val.red as f32 / 255.0,
+            val.green as f32 / 255.0,
+            val.blue as f32 / 255.0,
+            val.alpha as f32 / 255.0,
+        ]
     }
 }
 
-// built-in colors
+impl From<Color> for u32 {
+    fn from(val: Color) -> Self {
+        (val.red as u32) << 24
+            | (val.green as u32) << 16
+            | (val.blue as u32) << 8
+            | val.alpha as u32
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ColorParseError {
+    #[error("invalid hex digit `{0}`")]
+    InvalidHexDigit(char),
+    #[error("invalid length")]
+    InvalidLength,
+}
+
+macro_rules! match_hex {
+    ($c:expr) => {
+        match $c {
+            b'0'..=b'9' => $c - b'0',
+            b'a'..=b'f' => $c - b'a' + 10,
+            b'A'..=b'F' => $c - b'A' + 10,
+            _ => return Err(ColorParseError::InvalidHexDigit($c as char)),
+        }
+    };
+    ($c1:expr, $c2:expr) => {
+        match_hex!($c1) * 16 + match_hex!($c2)
+    };
+}
+
+impl FromStr for Color {
+    type Err = ColorParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+        let s = s.strip_prefix('#').unwrap_or(s);
+        let s = s.as_bytes();
+        if s.len() == 3 {
+            let r = match_hex!(s[0]);
+            let g = match_hex!(s[1]);
+            let b = match_hex!(s[2]);
+
+            Ok(Color::rgb(r * 17, g * 17, b * 17))
+        } else if s.len() == 6 {
+            let r = match_hex!(s[0], s[1]);
+            let g = match_hex!(s[2], s[3]);
+            let b = match_hex!(s[4], s[5]);
+
+            Ok(Color::rgb(r, g, b))
+        } else {
+            Err(ColorParseError::InvalidLength)
+        }
+    }
+}

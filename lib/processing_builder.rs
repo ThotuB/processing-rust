@@ -1,4 +1,4 @@
-use crate::{processing::Processing, renderer::Renderer};
+use crate::{processing::Processing, traits::Renderer};
 
 #[derive(Debug)]
 pub struct ProcessingBuilder<T, R: Renderer + Default> {
