@@ -1,4 +1,4 @@
-use p5::Color;
+use p5::Application;
 
 extern crate processing as p5;
 

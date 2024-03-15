@@ -1,8 +1,8 @@
-use p5::{App, Color, GraphicsP2D, Processing, Vector2D, QUARTER_PI, SIXTEENTH_PI};
+use p5::{App, Application, Color, GraphicsP2D, Processing, Vector2D, QUARTER_PI, SIXTEENTH_PI};
 
 use crate::examples::trees::tree::{MaxToMinFn, Tree, TreeOptions};
 
-pub fn app() -> App<(), GraphicsP2D> {
+pub fn app() -> impl Application {
     p5::new()
         .with_size(1000, 1000)
         .with_title("trees")

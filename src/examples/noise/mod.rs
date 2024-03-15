@@ -1,13 +1,14 @@
 use noise::{NoiseFn, Perlin, Simplex};
-use p5::{App, Color, GraphicsP2D, EIGHTH_PI, HALF_PI, QUARTER_PI, SIXTEENTH_PI};
+use p5::{App, Application, Color, GraphicsP2D, EIGHTH_PI, HALF_PI, QUARTER_PI, SIXTEENTH_PI};
 use winit::keyboard::KeyCode;
 
-pub fn app() -> App<(), GraphicsP2D> {
+pub fn app() -> impl Application {
+    let noise = Perlin::new(0);
+
     p5::new()
         .with_size(500, 500)
         .with_title("perlin noise")
-        .setup(|p| {
-            let noise = Perlin::new(0);
+        .setup(move |p| {
             p.stroke_weight(2.0);
             p.stroke_cap(p5::StrokeCap::Round);
             let mut max = 0.0;

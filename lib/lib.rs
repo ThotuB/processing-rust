@@ -2,6 +2,7 @@
 extern crate glium;
 
 pub use app::App;
+pub use app::Application;
 pub use color::Color;
 pub use consts::*;
 pub use geometry::GeometryKind;

@@ -21,13 +21,12 @@ use crate::{
     Color,
 };
 
-pub type SetupFn<S, R> = fn(&mut Processing<S, R>);
+pub type SetupFn<S, R> = Box<dyn Fn(&mut Processing<S, R>)>;
 pub type DrawFn<S, R> = fn(&mut Processing<S, R>);
 pub type MouseClickedFn<S, R> = fn(&mut Processing<S, R>, MouseButton);
 pub type MouseMovedFn<S, R> = fn(&mut Processing<S, R>, f32, f32);
 pub type KeyPressedFn<S, R> = fn(&mut Processing<S, R>, KeyCode);
 
-#[derive(Debug)]
 pub struct Processing<S, R: Renderer> {
     pub state: S,
     g: R,
@@ -38,12 +37,9 @@ pub struct Processing<S, R: Renderer> {
     frame_rate: u32,
     frame_count: u32,
 
-    setup: SetupFn<S, R>,
     draw: Option<DrawFn<S, R>>,
-
     mouse_clicked: Option<MouseClickedFn<S, R>>,
     mouse_moved: Option<MouseMovedFn<S, R>>,
-
     key_pressed: Option<KeyPressedFn<S, R>>,
 
     painter: Painter,
@@ -54,8 +50,7 @@ impl<S, R: Renderer + Default> Processing<S, R> {
         state: S,
         window_settings: WindowSettings,
         painter: Painter,
-        setup: fn(&mut Processing<S, R>),
-        draw: Option<fn(&mut Processing<S, R>)>,
+        draw: Option<DrawFn<S, R>>,
         mouse_clicked: Option<MouseClickedFn<S, R>>,
         mouse_moved: Option<MouseMovedFn<S, R>>,
         key_pressed: Option<KeyPressedFn<S, R>>,
@@ -67,7 +62,6 @@ impl<S, R: Renderer + Default> Processing<S, R> {
             is_loop: true,
             frame_rate: 1,
             frame_count: 0,
-            setup,
             draw,
             mouse_clicked,
             mouse_moved,
@@ -227,8 +221,12 @@ impl<S, R: Renderer> Processing<S, R> {
     }
 
     // run
-    pub(crate) fn run(mut self, event_loop: EventLoop<()>) -> anyhow::Result<()> {
-        (self.setup)(&mut self);
+    pub(crate) fn run(
+        mut self,
+        event_loop: EventLoop<()>,
+        setup: SetupFn<S, R>,
+    ) -> anyhow::Result<()> {
+        setup(&mut self);
 
         let _ = event_loop.run(move |event, window_target| {
             self.event_handler(event, window_target);

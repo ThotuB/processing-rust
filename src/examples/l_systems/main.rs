@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use p5::{
-    lerp, App, Color, GraphicsP2D, Processing, Vector2D, EIGHTH_PI, HALF_PI, QUARTER_PI,
-    SIXTEENTH_PI,
+    lerp, App, Application, Color, GraphicsP2D, Processing, Vector2D, EIGHTH_PI, HALF_PI,
+    QUARTER_PI, SIXTEENTH_PI,
 };
 use winit::keyboard::KeyCode;
 
 use crate::{examples::l_systems::l_system::LSystemConfig, l_system_config};
 
-type P = Processing<State, GraphicsP2D>;
+type P<'a> = Processing<State, GraphicsP2D>;
 
 pub fn draw(config: &LSystemConfig, start_pos: Vector2D, iterations: usize, p: &mut P) {
     p.stroke_cap(p5::StrokeCap::Round);
@@ -60,7 +60,7 @@ pub struct State {
     pub iterations: usize,
 }
 
-pub fn app() -> App<State, GraphicsP2D> {
+pub fn app() -> impl Application {
     let state = State {
         l_system_config: l_system_config!(
             "F",

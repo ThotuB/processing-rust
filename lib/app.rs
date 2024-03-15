@@ -6,16 +6,18 @@ use crate::{
     processing::{DrawFn, KeyPressedFn, MouseClickedFn, MouseMovedFn, Processing, SetupFn},
     settings::WindowSettings,
     traits::Renderer,
-    Vector2D,
 };
 
-#[derive(Debug)]
+pub trait Application {
+    fn run(self) -> anyhow::Result<()>;
+}
+
 pub struct App<S, R: Renderer + Default> {
     state: S,
 
     window_settings: WindowSettings,
 
-    setup: SetupFn<S, R>,
+    setup: Option<SetupFn<S, R>>,
     draw: Option<DrawFn<S, R>>,
 
     mouse_clicked: Option<MouseClickedFn<S, R>>,
@@ -29,7 +31,7 @@ impl<S, R: Renderer + Default> App<S, R> {
         App {
             state,
             window_settings: WindowSettings::default(),
-            setup: |_| {},
+            setup: None,
             draw: None,
             mouse_clicked: None,
             mouse_moved: None,
@@ -48,8 +50,8 @@ impl<S, R: Renderer + Default> App<S, R> {
         self
     }
 
-    pub fn setup(mut self, f: SetupFn<S, R>) -> App<S, R> {
-        self.setup = f;
+    pub fn setup(mut self, f: impl Fn(&mut Processing<S, R>) + 'static) -> App<S, R> {
+        self.setup = Some(Box::new(f));
         self
     }
 
@@ -72,8 +74,10 @@ impl<S, R: Renderer + Default> App<S, R> {
         self.key_pressed = Some(f);
         self
     }
+}
 
-    pub fn run(self) -> anyhow::Result<()> {
+impl<S, R: Renderer + Default> Application for App<S, R> {
+    fn run(self) -> anyhow::Result<()> {
         let event_loop = EventLoop::new()?;
         let (window, display) = SimpleWindowBuilder::new()
             .with_inner_size(self.window_settings.width, self.window_settings.height)
@@ -91,13 +95,12 @@ impl<S, R: Renderer + Default> App<S, R> {
             self.state,
             self.window_settings,
             Painter::new(window, display, program),
-            self.setup,
             self.draw,
             self.mouse_clicked,
             self.mouse_moved,
             self.key_pressed,
         );
 
-        processing.run(event_loop)
+        processing.run(event_loop, self.setup.unwrap_or(Box::new(|_| {})))
     }
 }
