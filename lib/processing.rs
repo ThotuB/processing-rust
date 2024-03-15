@@ -1,15 +1,13 @@
-use std::ops::{ControlFlow, Deref, DerefMut};
+
 
 use glium::{
-    backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface, index::NoIndices,
-    program, Display, Surface,
+    index::NoIndices, Surface,
 };
 use image::Rgba;
 use winit::{
     event::{ElementState, Event, MouseButton, WindowEvent},
     event_loop::{EventLoop, EventLoopWindowTarget},
     keyboard::{KeyCode, PhysicalKey},
-    window::Window,
 };
 
 use crate::{
@@ -341,8 +339,8 @@ impl<S, R: Renderer> Processing<S, R> {
                 }
                 WindowEvent::MouseWheel {
                     device_id: _,
-                    delta,
-                    phase,
+                    delta: _,
+                    phase: _,
                 } => {}
                 WindowEvent::MouseInput {
                     device_id: _,
@@ -358,12 +356,12 @@ impl<S, R: Renderer> Processing<S, R> {
                 WindowEvent::RedrawRequested => {
                     println!("RedrawRequested");
 
-                    let frame_time =
+                    let _frame_time =
                         std::time::Duration::from_secs_f32(1.0 / self.frame_rate as f32);
 
                     let _ = self.handle_draw();
 
-                    let elapsed = start_time.elapsed();
+                    let _elapsed = start_time.elapsed();
                 }
                 _ => (),
             }

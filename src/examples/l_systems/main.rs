@@ -1,8 +1,7 @@
-use std::collections::HashMap;
+
 
 use p5::{
-    lerp, App, Application, Color, GraphicsP2D, Processing, Vector2D, EIGHTH_PI, HALF_PI,
-    QUARTER_PI, SIXTEENTH_PI,
+    lerp, Application, Color, GraphicsP2D, Processing, Vector2D, EIGHTH_PI, HALF_PI,
 };
 use winit::keyboard::KeyCode;
 
@@ -14,7 +13,7 @@ pub fn draw(config: &LSystemConfig, start_pos: Vector2D, iterations: usize, p: &
     p.stroke_cap(p5::StrokeCap::Round);
     p.background(Color::hex(0x84c3e3));
 
-    for iteration in (1..=iterations) {
+    for iteration in 1..=iterations {
         let generation = config.generate(iteration);
         let mut current_pos = start_pos;
         let mut current_angle = HALF_PI;

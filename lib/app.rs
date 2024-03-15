@@ -1,5 +1,5 @@
 use glium::backend::glutin::SimpleWindowBuilder;
-use winit::{event::MouseButton, event_loop::EventLoop, keyboard::KeyCode};
+use winit::{event_loop::EventLoop};
 
 use crate::{
     painter::Painter,

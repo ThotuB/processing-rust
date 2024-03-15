@@ -1,4 +1,4 @@
-use crate::{settings::StrokeSettings, Color};
+use crate::{Color};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vertex {

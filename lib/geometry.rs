@@ -1,7 +1,7 @@
 use glium::index;
 
 use crate::{
-    core::vertex::{vert3d, Vertex},
+    core::vertex::{vert3d},
     gl_shape::LazyGlShape,
     Color,
 };

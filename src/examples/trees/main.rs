@@ -1,4 +1,4 @@
-use p5::{App, Application, Color, GraphicsP2D, Processing, Vector2D, QUARTER_PI, SIXTEENTH_PI};
+use p5::{Application, Color, Vector2D, QUARTER_PI, SIXTEENTH_PI};
 
 use crate::examples::trees::tree::{MaxToMinFn, Tree, TreeOptions};
 

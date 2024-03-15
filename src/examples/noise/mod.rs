@@ -1,5 +1,5 @@
-use noise::{NoiseFn, Perlin, Simplex};
-use p5::{App, Application, Color, GraphicsP2D, EIGHTH_PI, HALF_PI, QUARTER_PI, SIXTEENTH_PI};
+use noise::{NoiseFn, Perlin};
+use p5::{Application, Color};
 use winit::keyboard::KeyCode;
 
 pub fn app() -> impl Application {

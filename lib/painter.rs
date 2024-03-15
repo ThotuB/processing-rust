@@ -1,5 +1,5 @@
 use glium::{glutin::surface::WindowSurface, Display, Program};
-use winit::{event_loop::EventLoop, window::Window};
+use winit::{window::Window};
 
 #[derive(Debug)]
 pub struct Painter {

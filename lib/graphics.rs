@@ -210,19 +210,19 @@ pub struct GraphicsP3D {
 }
 
 impl GraphicsP3D {
-    pub fn parallelepiped(&mut self, width: f32, height: f32, depth: f32, angle: f32) {
+    pub fn parallelepiped(&mut self, _width: f32, _height: f32, _depth: f32, _angle: f32) {
         unimplemented!("3D shapes are not yet implemented");
     }
 
-    pub fn rectengular_cuboid(&mut self, width: f32, height: f32, depth: f32) {
+    pub fn rectengular_cuboid(&mut self, _width: f32, _height: f32, _depth: f32) {
         unimplemented!("3D shapes are not yet implemented");
     }
 
-    pub fn cube(&mut self, size: f32) {
+    pub fn cube(&mut self, _size: f32) {
         unimplemented!("3D shapes are not yet implemented");
     }
 
-    pub fn sphere(&mut self, radius: f32) {
+    pub fn sphere(&mut self, _radius: f32) {
         unimplemented!("3D shapes are not yet implemented");
     }
 }
