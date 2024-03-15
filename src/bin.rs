@@ -9,6 +9,7 @@ mod examples;
 // }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    examples::trees::app().run()?;
+    // examples::trees::app().run()?;
+    examples::noise::app().run()?;
     Ok(())
 }

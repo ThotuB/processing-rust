@@ -14,5 +14,8 @@ path = "src/bin.rs"
 [dependencies]
 anyhow = "1.0.79"
 glium = "0.34.0"
+image = "0.25.0"
+noise = "0.8.2"
+rand = "0.8.5"
 thiserror = "1.0.57"
 winit = "0.29.10"

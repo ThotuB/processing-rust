@@ -1,20 +1,26 @@
-use p5::{Color, GraphicsP2D, Processing, Vector2D};
+use p5::{lerp, Color, GraphicsP2D, Processing, Vector2D, RAD_TO_DEG};
 
-pub struct TreeOptions {
-    pub iterations: u32,
-    pub position: Vector2D,
-    pub color: Color,
-    // length
-    pub trunk_length: f32,
-    pub twig_length: f32,
-    // width
-    pub trunk_width: f32,
-    pub twig_width: f32,
-    // branching
-    pub trunk_branching: f32,
-    pub twig_branching: f32,
-    pub max_angle_offset: f32,
+pub struct MaxToMinFn {
+    pub max: f32,
+    pub min: f32,
+    func: fn(f32, f32, f32) -> f32,
 }
+
+impl MaxToMinFn {
+    pub fn custom_fn(max: f32, min: f32, func: fn(f32, f32, f32) -> f32) -> MaxToMinFn {
+        MaxToMinFn { max, min, func }
+    }
+
+    pub fn lerp(max: f32, min: f32) -> MaxToMinFn {
+        MaxToMinFn::custom_fn(max, min, lerp)
+    }
+
+    pub fn map(&self, value: f32) -> f32 {
+        (self.func)(self.max, self.min, value)
+    }
+}
+
+pub struct BranchOptions {}
 
 #[derive(Debug, Clone, Copy)]
 struct Branch {
@@ -34,12 +40,17 @@ impl Branch {
         }
     }
 
+    fn from_angle(start: Vector2D, angle: f32, length: f32, width: f32, color: Color) -> Branch {
+        let end = Vector2D::from_angle(angle) * length + start;
+        Branch::new(start, end, width, color)
+    }
+
     fn length(&self) -> f32 {
         self.start.distance(self.end)
     }
 
     fn angle(&self) -> f32 {
-        self.start.angle_between(self.end)
+        self.start.angle_to(self.end)
     }
 
     fn draw(&self, p: &mut Processing<(), GraphicsP2D>) {
@@ -47,6 +58,20 @@ impl Branch {
         p.stroke_weight(self.width);
         p.line(self.start.x, self.start.y, self.end.x, self.end.y);
     }
+}
+
+pub struct TreeOptions {
+    pub iterations: u32,
+    pub position: Vector2D,
+    pub color: Color,
+    // length
+    pub branch_length: MaxToMinFn,
+    // width
+    pub branch_width: MaxToMinFn,
+    // branching
+    pub branch_branching: MaxToMinFn,
+    // angle
+    pub branch_max_angle: MaxToMinFn,
 }
 
 pub struct Tree {
@@ -62,64 +87,58 @@ impl Tree {
         }
     }
 
-    pub fn generate(&mut self) {
+    pub fn generate(mut self) -> Tree {
         let trunk = Branch::new(
             self.options.position,
             Vector2D::new(
                 self.options.position.x,
-                self.options.position.y + self.options.trunk_length,
+                self.options.position.y + self.options.branch_length.max,
             ),
-            self.options.trunk_width,
+            self.options.branch_width.max,
             self.options.color,
         );
         self.branches.push(trunk);
 
-        self.branch(
-            &trunk,
-            self.options.trunk_branching,
-            self.options.iterations,
-        );
+        println!("trunk: {:#?}", trunk.angle() * RAD_TO_DEG);
+
+        self.grow(&trunk, 0);
+        self
     }
 
-    fn branch(&mut self, branch: &Branch, branching: f32, iterations: u32) {
-        if iterations == 0 {
+    fn branch_out(&mut self, branch: &Branch, iteration: u32) {
+        self.grow_out(branch, iteration);
+        self.grow_out(branch, iteration);
+    }
+
+    fn grow_out(&mut self, branch: &Branch, iteration: u32) {
+        let t = iteration as f32 / self.options.iterations as f32;
+
+        let start = branch.end;
+        let angle =
+            branch.angle() + self.options.branch_max_angle.map(t) * (rand::random::<f32>() - 0.5);
+        let length = self.options.branch_length.map(t);
+        let width = self.options.branch_width.map(t);
+        let color = self.options.color;
+
+        let new_branch = Branch::from_angle(start, angle, length, width, color);
+        // println!("new_branch {:?}: {:#?}", iteration, new_branch);
+        self.branches.push(new_branch);
+
+        self.grow(&new_branch, iteration + 1);
+    }
+
+    fn grow(&mut self, branch: &Branch, iteration: u32) {
+        if iteration == self.options.iterations {
             return;
         }
 
-        let mut end = branch.end;
-        let mut angle = branch.angle();
-        let mut length = branch.length();
-
-        let mut left_angle = angle - branching;
-        let mut right_angle = angle + branching;
-
-        let mut left_end = Vector2D::new(
-            end.x + left_angle.cos() * length,
-            end.y + left_angle.sin() * length,
-        );
-        let mut right_end = Vector2D::new(
-            end.x + right_angle.cos() * length,
-            end.y + right_angle.sin() * length,
-        );
-
-        let left_branch = Branch::new(
-            end,
-            left_end,
-            branch.width * self.options.twig_width,
-            branch.color,
-        );
-        let right_branch = Branch::new(
-            end,
-            right_end,
-            branch.width * self.options.twig_width,
-            branch.color,
-        );
-
-        self.branches.push(left_branch);
-        self.branches.push(right_branch);
-
-        self.branch(&left_branch, self.options.twig_branching, iterations - 1);
-        self.branch(&right_branch, self.options.twig_branching, iterations - 1);
+        let t = iteration as f32 / self.options.iterations as f32;
+        let branching = self.options.branch_branching.map(t);
+        if rand::random::<f32>() < branching {
+            self.branch_out(branch, iteration);
+        } else {
+            self.grow_out(branch, iteration);
+        }
     }
 
     pub fn draw(&self, p: &mut Processing<(), GraphicsP2D>) {

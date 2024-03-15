@@ -9,6 +9,30 @@ impl Vector2D {
         Vector2D { x, y }
     }
 
+    /// Create a new unit vector from an angle in radians
+    ///
+    /// # Arguments
+    ///
+    /// * `angle` - The angle in radians
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use math::Vector2D;
+    ///
+    /// let v = Vector2D::from_angle(std::f32::consts::PI);
+    /// assert_eq!(v.x, -1.0);
+    /// assert_eq!(v.y, 0.0);
+    /// assert_eq!(v.magnitude(), 1.0);
+    /// ```
+    /// ```
+    /// use math::Vector2D;
+    ///
+    /// let v = Vector2D::from_angle(std::f32::consts::PI / 2.0) * 3.0;
+    /// assert_eq!(v.x, 0.0);
+    /// assert_eq!(v.y, 3.0);
+    /// assert_eq!(v.magnitude(), 3.0);
+    /// ```
     pub fn from_angle(angle: f32) -> Vector2D {
         Vector2D {
             x: angle.cos(),
@@ -30,6 +54,10 @@ impl Vector2D {
 
     pub fn angle_between(&self, other: Vector2D) -> f32 {
         self.angle() - other.angle()
+    }
+
+    pub fn angle_to(&self, other: Vector2D) -> f32 {
+        (other - *self).angle()
     }
 
     pub fn normalize(&mut self) {

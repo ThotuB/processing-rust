@@ -1,30 +1,25 @@
-use p5::{Color, GraphicsP2D, Processing, Vector2D, QUARTER_PI};
+use p5::{App, Color, GraphicsP2D, Processing, Vector2D, QUARTER_PI, SIXTEENTH_PI};
 
-use crate::examples::trees::tree::{Tree, TreeOptions};
+use crate::examples::trees::tree::{MaxToMinFn, Tree, TreeOptions};
 
-pub fn app() -> Processing<(), GraphicsP2D> {
+pub fn app() -> App<(), GraphicsP2D> {
     p5::new()
+        .with_size(1000, 1000)
+        .with_title("trees")
         .setup(|p| {
-            p.size(1000, 1000);
-            p.title("trees");
-            p.background(Color::hex_code("#74726E").unwrap());
+            p.background(Color::hex(0x84c3e3));
 
             let options = TreeOptions {
-                iterations: 10,
+                iterations: 5,
                 position: Vector2D::new(500.0, 0.0),
-                color: Color::hex_code("#74726E").unwrap(),
-                trunk_length: 120.0,
-                twig_length: 20.0,
-                trunk_width: 40.0,
-                twig_width: 1.0,
-                trunk_branching: 0.0,
-                twig_branching: 0.4,
-                max_angle_offset: QUARTER_PI,
+                color: Color::hex(0xa38446),
+                branch_length: MaxToMinFn::lerp(80.0, 50.0),
+                branch_width: MaxToMinFn::lerp(40.0, 1.0),
+                branch_branching: MaxToMinFn::lerp(1.0, 1.0),
+                branch_max_angle: MaxToMinFn::lerp(SIXTEENTH_PI, 3.0 * QUARTER_PI),
             };
 
-            let mut tree = Tree::new(options);
-            tree.generate();
+            let tree = Tree::new(options).generate();
             tree.draw(p);
         })
-        .build()
 }

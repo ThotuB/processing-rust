@@ -58,8 +58,53 @@ impl Color {
         }
     }
 
+    pub fn gray(value: u8) -> Color {
+        Color {
+            red: value,
+            green: value,
+            blue: value,
+            alpha: 255,
+        }
+    }
+
+    pub fn red(value: u8) -> Color {
+        Color {
+            red: value,
+            green: 0,
+            blue: 0,
+            alpha: 255,
+        }
+    }
+
+    pub fn green(value: u8) -> Color {
+        Color {
+            red: 0,
+            green: value,
+            blue: 0,
+            alpha: 255,
+        }
+    }
+
+    pub fn blue(value: u8) -> Color {
+        Color {
+            red: 0,
+            green: 0,
+            blue: value,
+            alpha: 255,
+        }
+    }
+
     pub fn with_alpha(self, alpha: u8) -> Color {
         Color { alpha, ..self }
+    }
+
+    pub fn complement(self) -> Color {
+        Color {
+            red: 255 - self.red,
+            green: 255 - self.green,
+            blue: 255 - self.blue,
+            alpha: self.alpha,
+        }
     }
 
     // built-in colors
@@ -140,6 +185,74 @@ impl FromStr for Color {
             Ok(Color::rgb(r, g, b))
         } else {
             Err(ColorParseError::InvalidLength)
+        }
+    }
+}
+
+// Aditive color mixing
+// add: red + green = yellow -> (255, 0, 0) + (0, 255, 0) = (255, 255, 0)
+// add: red + blue = magenta -> (255, 0, 0) + (0, 0, 255) = (255, 0, 255)
+// add: green + blue = cyan -> (0, 255, 0) + (0, 0, 255) = (0, 255, 255)
+
+// subtract: magenta - blue = red -> (255, 0, 255) - (0, 0, 255) = (255, 0, 0)
+// subtract: magenta - cyan = red -> (255, 0, 255) - (0, 255, 255) = (255, 0, 0)
+// subtract: white - blue = yellow -> (255, 255, 255) - (0, 0, 255) = (255, 255, 0)
+
+// Subtractive color mixing
+// add: cyan + magenta = blue -> (0, 255, 255) + (255, 0, 255) = (0, 0, 255)
+// add: cyan + yellow = green -> (0, 255, 255) + (255, 255, 0) = (0, 255, 0)
+// add: magenta + yellow = red -> (255, 0, 255) + (255, 255, 0) = (255, 0, 0)
+
+// subtract: cyan - magenta = green -> (0, 255, 255) - (255, 0, 255) = (0, 255, 0)
+
+impl std::ops::Add for Color {
+    type Output = Color;
+
+    fn add(self, other: Color) -> Color {
+        Color {
+            red: self.red.saturating_add(other.red),
+            green: self.green.saturating_add(other.green),
+            blue: self.blue.saturating_add(other.blue),
+            alpha: ((self.alpha as u16 + other.alpha as u16) / 2_u16) as u8,
+        }
+    }
+}
+
+impl std::ops::Sub for Color {
+    type Output = Color;
+
+    fn sub(self, other: Color) -> Color {
+        Color {
+            red: self.red.saturating_sub(other.red),
+            green: self.green.saturating_sub(other.green),
+            blue: self.blue.saturating_sub(other.blue),
+            alpha: ((self.alpha as u16 + other.alpha as u16) / 2_u16) as u8,
+        }
+    }
+}
+
+impl std::ops::Mul<f32> for Color {
+    type Output = Color;
+
+    fn mul(self, scalar: f32) -> Color {
+        Color {
+            red: (self.red as f32 * scalar) as u8,
+            green: (self.green as f32 * scalar) as u8,
+            blue: (self.blue as f32 * scalar) as u8,
+            alpha: self.alpha,
+        }
+    }
+}
+
+impl std::ops::Div<f32> for Color {
+    type Output = Color;
+
+    fn div(self, scalar: f32) -> Color {
+        Color {
+            red: (self.red as f32 / scalar) as u8,
+            green: (self.green as f32 / scalar) as u8,
+            blue: (self.blue as f32 / scalar) as u8,
+            alpha: self.alpha,
         }
     }
 }

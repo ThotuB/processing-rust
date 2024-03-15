@@ -1,22 +1,31 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::{ControlFlow, Deref, DerefMut};
 
 use glium::{
     backend::glutin::SimpleWindowBuilder, glutin::surface::WindowSurface, index::NoIndices,
     program, Display, Surface,
 };
+use image::Rgba;
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, MouseButton, WindowEvent},
     event_loop::{EventLoop, EventLoopWindowTarget},
+    keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
 use crate::{
     geometry::GeometryKind,
     graphics::{GraphicsP2D, GraphicsP3D},
+    painter::Painter,
     settings::{StrokeCap, StrokeJoin, WindowSettings},
     traits::{BeginShape, Renderer, Stroke},
     Color,
 };
+
+pub type SetupFn<S, R> = fn(&mut Processing<S, R>);
+pub type DrawFn<S, R> = fn(&mut Processing<S, R>);
+pub type MouseClickedFn<S, R> = fn(&mut Processing<S, R>, MouseButton);
+pub type MouseMovedFn<S, R> = fn(&mut Processing<S, R>, f32, f32);
+pub type KeyPressedFn<S, R> = fn(&mut Processing<S, R>, KeyCode);
 
 #[derive(Debug)]
 pub struct Processing<S, R: Renderer> {
@@ -29,38 +38,55 @@ pub struct Processing<S, R: Renderer> {
     frame_rate: u32,
     frame_count: u32,
 
-    setup: fn(&mut Processing<S, R>),
-    draw: fn(&mut Processing<S, R>),
+    setup: SetupFn<S, R>,
+    draw: Option<DrawFn<S, R>>,
+
+    mouse_clicked: Option<MouseClickedFn<S, R>>,
+    mouse_moved: Option<MouseMovedFn<S, R>>,
+
+    key_pressed: Option<KeyPressedFn<S, R>>,
+
+    painter: Painter,
 }
 
 impl<S, R: Renderer + Default> Processing<S, R> {
-    pub fn new(
-        setup: fn(&mut Processing<S, R>),
-        draw: fn(&mut Processing<S, R>),
+    pub(crate) fn new(
         state: S,
+        window_settings: WindowSettings,
+        painter: Painter,
+        setup: fn(&mut Processing<S, R>),
+        draw: Option<fn(&mut Processing<S, R>)>,
+        mouse_clicked: Option<MouseClickedFn<S, R>>,
+        mouse_moved: Option<MouseMovedFn<S, R>>,
+        key_pressed: Option<KeyPressedFn<S, R>>,
     ) -> Processing<S, R> {
         Processing {
             state,
             g: R::default(),
-            window_settings: WindowSettings::default(),
+            window_settings,
             is_loop: true,
             frame_rate: 1,
             frame_count: 0,
             setup,
             draw,
+            mouse_clicked,
+            mouse_moved,
+            key_pressed,
+            painter,
         }
     }
 }
 
 impl<S, R: Renderer> Processing<S, R> {
     // window configuration
-    pub fn size(&mut self, width: u32, height: u32) {
-        self.window_settings.width = width;
-        self.window_settings.height = height;
-    }
-
+    //     pub fn size(&mut self, width: u32, height: u32) {
+    //         self.window_settings.width = width;
+    //         self.window_settings.height = height;
+    //     }
+    //
     pub fn title(&mut self, title: &str) {
         self.window_settings.title = title.to_string();
+        self.painter.window.set_title(title);
     }
 
     pub fn width(&self) -> u32 {
@@ -113,50 +139,25 @@ impl<S, R: Renderer> Processing<S, R> {
         self.is_loop = false;
     }
 
-    // run
-    pub fn run(mut self) -> anyhow::Result<()> {
-        (self.setup)(&mut self);
+    pub fn redraw(&mut self) {
+        self.painter.window.request_redraw();
+    }
 
-        let event_loop = EventLoop::new().unwrap();
-        let (window, display) = SimpleWindowBuilder::new()
-            .with_inner_size(self.width(), self.height())
-            .with_title(&self.window_settings.title)
-            .build(&event_loop);
-
-        let program = glium::Program::from_source(
-            &display,
-            include_str!("shaders/vertex.glsl"),
-            include_str!("shaders/fragment.glsl"),
-            None,
-        )
-        .unwrap();
-
-        self.draw_frame(&display, &program);
-
-        let frame_time = std::time::Duration::from_secs_f32(1.0 / self.frame_rate as f32);
-
-        let _ = event_loop.run(move |event, window_target| {
-            let now = std::time::Instant::now();
-
-            self.event_handler(event, window_target);
-
-            self.handle_draw(&display, &program);
-
-            let elapsed = now.elapsed();
-            if elapsed < frame_time {
-                std::thread::sleep(frame_time - elapsed);
-            }
-        });
+    pub fn screenshot(&self, path: &str) -> anyhow::Result<()> {
+        let image = self
+            .painter
+            .display
+            .read_front_buffer::<glium::texture::RawImage2d<'_, u8>>()?;
+        let image: image::ImageBuffer<Rgba<u8>, Vec<u8>> =
+            image::ImageBuffer::from_raw(image.width, image.height, image.data.into_owned())
+                .ok_or(anyhow::anyhow!("Error reading image"))?;
+        let image = image::DynamicImage::ImageRgba8(image).flipv();
+        image.save(path)?;
 
         Ok(())
     }
 
-    fn draw_shapes(
-        &mut self,
-        target: &mut glium::Frame,
-        display: &glium::Display<WindowSurface>,
-        program: &glium::Program,
-    ) {
+    fn draw_shapes(&mut self, target: &mut glium::Frame) -> anyhow::Result<()> {
         let uniforms = uniform! {
             projection: [
                 [2.0 / self.width() as f32, 0.0, 0.0, 0.0],
@@ -188,36 +189,52 @@ impl<S, R: Renderer> Processing<S, R> {
             .collect::<Vec<_>>();
 
         for gl_shape in &gl_shapes {
-            let vertex_buffer = glium::VertexBuffer::new(display, &gl_shape.vertices).unwrap();
+            let vertex_buffer =
+                glium::VertexBuffer::new(&self.painter.display, &gl_shape.vertices)?;
 
-            target
-                .draw(
-                    &vertex_buffer,
-                    NoIndices(gl_shape.index_type),
-                    program,
-                    &uniforms,
-                    &params,
-                )
-                .unwrap();
+            target.draw(
+                &vertex_buffer,
+                NoIndices(gl_shape.index_type),
+                &self.painter.program,
+                &uniforms,
+                &params,
+            )?;
         }
+
+        Ok(())
     }
 
-    fn draw_frame(&mut self, display: &glium::Display<WindowSurface>, program: &glium::Program) {
-        let mut target = display.draw();
+    fn draw_frame(&mut self) -> anyhow::Result<()> {
+        let mut target = self.painter.display.draw();
 
-        self.draw_shapes(&mut target, display, program);
+        self.draw_shapes(&mut target)?;
 
-        target.finish().unwrap();
+        target.finish()?;
+
+        Ok(())
     }
 
-    fn handle_draw(&mut self, display: &glium::Display<WindowSurface>, program: &glium::Program) {
+    fn handle_draw(&mut self) -> anyhow::Result<()> {
         if !self.is_loop {
-            return;
+            return Ok(());
         }
 
-        (self.draw)(self);
+        if let Some(draw) = self.draw {
+            draw(self)
+        }
 
-        self.draw_frame(display, program);
+        self.draw_frame()
+    }
+
+    // run
+    pub(crate) fn run(mut self, event_loop: EventLoop<()>) -> anyhow::Result<()> {
+        (self.setup)(&mut self);
+
+        let _ = event_loop.run(move |event, window_target| {
+            self.event_handler(event, window_target);
+        });
+
+        Ok(())
     }
 }
 
@@ -292,102 +309,72 @@ impl<S> Processing<S, GraphicsP3D> {
     }
 }
 
-// impl<S, R: Renderer> Deref for Processing<S, R> {
-//     type Target = R;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.g
-//     }
-// }
-//
-// impl<S, R: Renderer> DerefMut for Processing<S, R> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.g
-//     }
-// }
-
 impl<S, R: Renderer> Processing<S, R> {
     fn event_handler(&mut self, event: Event<()>, window_target: &EventLoopWindowTarget<()>) {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
+        let start_time = std::time::Instant::now();
+
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
                 WindowEvent::CloseRequested => window_target.exit(),
-                // WindowEvent::ActivationTokenDone { serial, token } => todo!(),
-                // WindowEvent::Resized(_) => todo!(),
-                // WindowEvent::Moved(_) => todo!(),
-                // WindowEvent::Destroyed => todo!(),
-                // WindowEvent::DroppedFile(_) => todo!(),
-                // WindowEvent::HoveredFile(_) => todo!(),
-                // WindowEvent::HoveredFileCancelled => todo!(),
-                // WindowEvent::Focused(_) => todo!(),
-                // WindowEvent::KeyboardInput {
-                //     device_id,
-                //     event,
-                //     is_synthetic,
-                // } => todo!(),
-                // WindowEvent::ModifiersChanged(_) => todo!(),
-                // WindowEvent::Ime(_) => todo!(),
-                // WindowEvent::CursorMoved {
-                //     device_id,
-                //     position,
-                // } => todo!(),
-                // WindowEvent::CursorEntered { device_id } => todo!(),
-                // WindowEvent::CursorLeft { device_id } => todo!(),
-                // WindowEvent::MouseWheel {
-                //     device_id,
-                //     delta,
-                //     phase,
-                // } => todo!(),
-                // WindowEvent::MouseInput {
-                //     device_id,
-                //     state,
-                //     button,
-                // } => todo!(),
-                // WindowEvent::TouchpadMagnify {
-                //     device_id,
-                //     delta,
-                //     phase,
-                // } => todo!(),
-                // WindowEvent::SmartMagnify { device_id } => todo!(),
-                // WindowEvent::TouchpadRotate {
-                //     device_id,
-                //     delta,
-                //     phase,
-                // } => todo!(),
-                // WindowEvent::TouchpadPressure {
-                //     device_id,
-                //     pressure,
-                //     stage,
-                // } => todo!(),
-                // WindowEvent::AxisMotion {
-                //     device_id,
-                //     axis,
-                //     value,
-                // } => todo!(),
-                // WindowEvent::Touch(_) => todo!(),
-                // WindowEvent::ScaleFactorChanged {
-                //     scale_factor,
-                //     inner_size_writer,
-                // } => todo!(),
-                // WindowEvent::ThemeChanged(_) => todo!(),
-                // WindowEvent::Occluded(_) => todo!(),
-                // WindowEvent::RedrawRequested => todo!(),
+                WindowEvent::Resized(size) => {
+                    self.window_settings.width = size.width;
+                    self.window_settings.height = size.height;
+                }
+                WindowEvent::KeyboardInput {
+                    device_id: _,
+                    event,
+                    is_synthetic: _,
+                } => {
+                    if let Some(key_pressed) = self.key_pressed {
+                        if event.state == ElementState::Released {
+                            if let PhysicalKey::Code(key) = event.physical_key {
+                                key_pressed(self, key);
+                            }
+                        }
+                    }
+                }
+                WindowEvent::CursorMoved {
+                    device_id: _,
+                    position,
+                } => {
+                    if let Some(mouse_moved) = self.mouse_moved {
+                        mouse_moved(self, position.x as f32, position.y as f32);
+                    }
+                }
+                WindowEvent::MouseWheel {
+                    device_id: _,
+                    delta,
+                    phase,
+                } => {}
+                WindowEvent::MouseInput {
+                    device_id: _,
+                    state,
+                    button,
+                } => {
+                    if let Some(mouse_clicked) = self.mouse_clicked {
+                        if state == winit::event::ElementState::Released {
+                            mouse_clicked(self, button);
+                        }
+                    }
+                }
+                WindowEvent::RedrawRequested => {
+                    println!("RedrawRequested");
+
+                    let frame_time =
+                        std::time::Duration::from_secs_f32(1.0 / self.frame_rate as f32);
+
+                    let _ = self.handle_draw();
+
+                    let elapsed = start_time.elapsed();
+                }
                 _ => (),
-            },
-            // Event::NewEvents(_) => todo!(),
-            // Event::DeviceEvent { device_id, event } => todo!(),
-            // Event::UserEvent(_) => todo!(),
-            // Event::Suspended => todo!(),
-            // Event::Resumed => todo!(),
-            // Event::AboutToWait => todo!(),
-            // Event::LoopExiting => todo!(),
-            // Event::MemoryWarning => todo!(),
-            _ => (),
+            }
         };
     }
 }
 
-impl<T, R: Renderer> Drop for Processing<T, R> {
-    fn drop(&mut self) {
-        println!("Processing is dropped");
-    }
-}
+// impl<T, R: Renderer> Drop for Processing<T, R> {
+//     fn drop(&mut self) {
+//         println!("Processing is dropped");
+//     }
+// }
